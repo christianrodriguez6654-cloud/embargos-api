@@ -15,7 +15,6 @@ COLUMNAS_ESPERADAS = [
     "sade_banco",
 ]
 
-
 def extraer_pdf(ruta_pdf):
 
     filas = []
