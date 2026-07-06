@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard de Cierres de Embargos</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; background: #f5f5f5; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2.5rem; }
+    .kpi-card { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; text-align: center; background: white; }
+    .kpi-valor { font-size: 2rem; font-weight: bold; color: #2c3e50; }
+    .kpi-etiqueta { color: #666; margin-top: 0.25rem; }
+    
+    /* Nuevos estilos para las tablas */
+    h2 { margin-top: 2rem; color: #2c3e50; border-bottom: 2px solid #ccc; padding-bottom: 0.5rem; }
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 2rem; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 0.75rem 1rem; border-bottom: 1px solid #eee; }
+    th { background-color: #34495e; color: white; font-weight: bold; }
+    tr:hover { background-color: #f9f9f9; }
+    
+    /* Estilos para badges o etiquetas de estado */
+    .badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem; font-weight: bold; }
+    .badge-relacionado { background-color: #d4edda; color: #155724; }
+    .badge-no-relacionado { background-color: #fff3cd; color: #856404; }
+    
+    /* Estilos de paginación */
+    .paginacion { display: flex; justify-content: center; align-items: center; gap: 1rem; margin: 1.5rem 0; }
+    .btn-paginacion { display: inline-block; padding: 0.5rem 1rem; background-color: #34495e; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; }
+    .btn-paginacion.disabled { background-color: #ccc; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <h1>Dashboard de Cierres de Embargos</h1>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-valor"><%= kpis.archivos_procesados %></div>
+      <div class="kpi-etiqueta">Archivos procesados</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-valor"><%= kpis.registros_cierre %></div>
+      <div class="kpi-etiqueta">Registros de cierre</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-valor"><%= kpis.relacionados %></div>
+      <div class="kpi-etiqueta">Relacionados</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-valor"><%= kpis.no_relacionados %></div>
+      <div class="kpi-etiqueta">No relacionados</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-valor"><%= kpis.porcentaje_match %>%</div>
+      <div class="kpi-etiqueta">% Match</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-valor"><%= kpis.rechazados %></div>
+      <div class="kpi-etiqueta">Rechazados</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-valor"><%= kpis.total_embargos %></div>
+      <div class="kpi-etiqueta">Total de embargos</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-valor"><%= kpis.embargos_con_match %></div>
+      <div class="kpi-etiqueta">Embargos con match</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-valor"><%= kpis.embargos_sin_levantamiento %></div>
+      <div class="kpi-etiqueta">Embargos sin levantamiento</div>
+    </div>
+  </div>
+
+  <h2>Resumen por Archivo</h2>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Archivo</th>
+          <th>Total Registros</th>
+          <th>Relacionados</th>
+          <th>No Relacionados</th>
+          <th>Rechazados</th>
+          <th>% Match</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (resumenPorArchivo && resumenPorArchivo.length > 0) { %>
+          <% resumenPorArchivo.forEach(function(archivo) { %>
+            <tr>
+              <td><strong><%= archivo.archivo %></strong></td>
+              <td><%= archivo.registros %></td>
+              <td><%= archivo.relacionados %></td>
+              <td><%= archivo.no_relacionados %></td>
+              <td><%= archivo.rechazados %></td>
+              <td><%= archivo.porcentaje_match %>%</td>
+            </tr>
+          <% }); %>
+        <% } else { %>
+          <tr>
+            <td colspan="6" style="text-align: center; color: #666;">No hay información de archivos procesados.</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>No Relacionados por Vigencia</h2>
+  <div class="table-container" style="padding: 1.5rem;">
+    <canvas id="graficoVigencia" height="80"></canvas>
+  </div>
+
+  <h2>Filtros</h2>
+  <form method="GET" action="/" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+    <div>
+      <label>Archivo</label><br>
+      <select name="archivo">
+        <option value="">Todos</option>
+        <% listaArchivos.forEach(function(nombreArchivo) { %>
+          <option value="<%= nombreArchivo %>" <%= filtros.archivo === nombreArchivo ? 'selected' : '' %>>
+            <%= nombreArchivo %>
+          </option>
+        <% }); %>
+      </select>
+    </div>
+
+    <div>
+      <label>Estado del cruce</label><br>
+      <select name="estado_cruce">
+        <option value="">Todos</option>
+        <option value="relacionado" <%= filtros.estado_cruce === 'relacionado' ? 'selected' : '' %>>Relacionado</option>
+        <option value="no_relacionado" <%= filtros.estado_cruce === 'no_relacionado' ? 'selected' : '' %>>No relacionado</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Documento, placa o nombre</label><br>
+      <input type="text" name="buscar" value="<%= filtros.buscar || '' %>" placeholder="Buscar...">
+    </div>
+
+    <div>
+      <label>Fecha embargo desde</label><br>
+      <input type="date" name="fecha_desde" value="<%= filtros.fecha_desde || '' %>">
+    </div>
+
+    <div>
+      <label>Fecha embargo hasta</label><br>
+      <input type="date" name="fecha_hasta" value="<%= filtros.fecha_hasta || '' %>">
+    </div>
+
+    <div>
+      <button type="submit" class="btn-paginacion" style="border: none; cursor: pointer;">Filtrar</button>
+      <a href="/" class="btn-paginacion" style="background-color: #999;">Limpiar</a>
+    </div>
+  </form>
+
+  <h2>Detalle de Cruce (Total: <%= detalle.totalRegistros %>)</h2>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Documento</th>
+          <th>Expediente</th>
+          <th>Placa</th>
+          <th>Vigencia</th>
+          <th>Nombre</th>
+          <th>Archivo</th>
+          <th>Estado Cruce</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (detalle.filas && detalle.filas.length > 0) { %>
+          <% detalle.filas.forEach(function(fila) { %>
+            <tr>
+              <td><%= fila.documento %></td>
+              <td><%= fila.expediente || 'N/A' %></td>
+              <td><%= fila.placa %></td>
+              <td><%= fila.vigencia %></td>
+              <td><%= fila.nombre %></td>
+              <td><%= fila.archivo %></td>
+              <td>
+                <% if (fila.estado_cruce === 'relacionado') { %>
+                  <span class="badge badge-relacionado">Relacionado</span>
+                <% } else if (fila.estado_cruce === 'no_relacionado') { %>
+                  <span class="badge badge-no-relacionado">No Relacionado</span>
+                <% } else { %>
+                  <span class="badge"><%= fila.estado_cruce %></span>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        <% } else { %>
+          <tr>
+            <td colspan="7" style="text-align: center; color: #666;">No hay registros detallados en esta página.</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <%
+    const paramsFiltros = Object.entries(filtros)
+      .filter(([, valor]) => valor)
+      .map(([clave, valor]) => `${clave}=${encodeURIComponent(valor)}`)
+      .join("&");
+    const prefijo = paramsFiltros ? `${paramsFiltros}&` : "";
+  %>
+
+  <div class="paginacion">
+    <a href="?<%= prefijo %>pagina=<%= detalle.paginaActual - 1 %>"
+       class="btn-paginacion <%= detalle.paginaActual <= 1 ? 'disabled' : '' %>">
+      &laquo; Anterior
+    </a>
+
+    <span>Página <strong><%= detalle.paginaActual %></strong> de <%= detalle.totalPaginas %></span>
+
+    <a href="?<%= prefijo %>pagina=<%= detalle.paginaActual + 1 %>"
+       class="btn-paginacion <%= detalle.paginaActual >= detalle.totalPaginas ? 'disabled' : '' %>">
+      Siguiente &raquo;
+    </a>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script>
+    const datosVigencia = <%- JSON.stringify(noRelacionadosPorVigencia) %>;
+
+    new Chart(document.getElementById('graficoVigencia'), {
+      type: 'bar',
+      data: {
+        labels: datosVigencia.map(d => d.vigencia),
+        datasets: [{
+          label: 'No relacionados',
+          data: datosVigencia.map(d => d.total),
+          backgroundColor: '#e67e22',
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+      },
+    });
+  </script>
+</body>
+</html>
