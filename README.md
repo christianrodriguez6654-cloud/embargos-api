@@ -1,4 +1,3 @@
-# embargos-api
 # Ingesta, Cruce y Dashboard de Cierres de Embargos
 
 Solución local que extrae datos de reportes PDF de cierres de embargos (levantamientos), los normaliza y persiste en PostgreSQL, los cruza contra un histórico de embargos en CSV, y presenta los resultados en un dashboard web.
